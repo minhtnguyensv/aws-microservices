@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { RemovalPolicy } from 'aws-cdk-lib';
+import { LambdaRestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import {
@@ -41,5 +42,31 @@ export class AwsMicroservicesStack extends cdk.Stack {
     });
 
     productTable.grantReadWriteData(productFunction);
+
+    // Product microservice api gateway
+    // root name = product
+
+    // GET /product
+    // POST /product
+
+    // Single product with id prameter
+    // GET /product/{id}
+    // PUT /product/{id}
+    // DELETE /product/{id}
+
+    const apigw = new LambdaRestApi(this, 'productApi', {
+      restApiName: 'Product Service',
+      handler: productFunction,
+      proxy: false, // explicitly define the API model
+    });
+
+    const product = apigw.root.addResource('product');
+    product.addMethod('GET'); // GET /product
+    product.addMethod('POST'); // POST /product
+
+    const singleProduct = product.addResource('{id}'); // product/{id}
+    singleProduct.addMethod('GET'); // GET /product/{id}
+    singleProduct.addMethod('PUT'); // PUT /product/{id}
+    singleProduct.addMethod('DELETE'); // DELETE /product/{id}
   }
 }
