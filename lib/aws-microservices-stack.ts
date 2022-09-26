@@ -8,6 +8,7 @@ import {
 import { Construct } from 'constructs';
 import { join } from 'path';
 import { SwnDatabase } from './database';
+import { SwnMicroservices } from './microservice';
 
 export class AwsMicroservicesStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -15,23 +16,27 @@ export class AwsMicroservicesStack extends cdk.Stack {
 
     const database = new SwnDatabase(this, 'Database');
 
-    const nodeJsFunctionProps: NodejsFunctionProps = {
-      bundling: {
-        externalModules: ['aws-cdk'],
-      },
-      environment: {
-        PRIMARY_KEY: 'id',
-        DYNAMODB_TABLE_NAME: database.productTable.tableName,
-      },
-      runtime: Runtime.NODEJS_14_X,
-    };
-
-    const productFunction = new NodejsFunction(this, 'productLambdaFunction', {
-      entry: join(__dirname, `/../src/product/index.js`),
-      ...nodeJsFunctionProps,
+    const microservices = new SwnMicroservices(this, 'Microservices', {
+      productTable: database.productTable,
     });
 
-    database.productTable.grantReadWriteData(productFunction);
+    // const nodeJsFunctionProps: NodejsFunctionProps = {
+    //   bundling: {
+    //     externalModules: ['aws-cdk'],
+    //   },
+    //   environment: {
+    //     PRIMARY_KEY: 'id',
+    //     DYNAMODB_TABLE_NAME: database.productTable.tableName,
+    //   },
+    //   runtime: Runtime.NODEJS_14_X,
+    // };
+
+    // const productFunction = new NodejsFunction(this, 'productLambdaFunction', {
+    //   entry: join(__dirname, `/../src/product/index.js`),
+    //   ...nodeJsFunctionProps,
+    // });
+
+    // database.productTable.grantReadWriteData(productFunction);
 
     // Product microservice api gateway
     // root name = product
@@ -46,7 +51,7 @@ export class AwsMicroservicesStack extends cdk.Stack {
 
     const apigw = new LambdaRestApi(this, 'productApi', {
       restApiName: 'Product Service',
-      handler: productFunction,
+      handler: microservices.productMicroservice,
       proxy: false, // explicitly define the API model
     });
 

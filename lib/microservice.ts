@@ -12,6 +12,8 @@ interface SwnMicroservicesProps {
 }
 
 export class SwnMicroservices extends Construct {
+  public readonly productMicroservice: NodejsFunction;
+
   constructor(scope: Construct, id: string, props: SwnMicroservicesProps) {
     super(scope, id);
 
@@ -32,5 +34,7 @@ export class SwnMicroservices extends Construct {
     });
 
     props.productTable.grantReadWriteData(productFunction);
+
+    this.productMicroservice = productFunction;
   }
 }
