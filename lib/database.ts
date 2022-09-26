@@ -15,6 +15,13 @@ export class SwnDatabase extends Construct {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
+    // product table
+    this.productTable = this.createProductTable();
+    // basket table
+    this.basketTable = this.createBasketTable();
+  }
+
+  private createProductTable(): ITable {
     // Product DynamoDb table creation
     // product: PK: id -- name -- description -- imageFile -- price -- category
     const productTable = new Table(this, 'product', {
@@ -27,8 +34,10 @@ export class SwnDatabase extends Construct {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    this.productTable = productTable;
+    return productTable;
+  }
 
+  private createBasketTable(): ITable {
     // Basket table
     // Basket PK-userName -- items (SET-MAP object)
     // item 1 - { quantity - color - price - productId - productName }
@@ -44,6 +53,6 @@ export class SwnDatabase extends Construct {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    this.basketTable = basketTable;
+    return basketTable;
   }
 }
