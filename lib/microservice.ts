@@ -9,21 +9,32 @@ import { join } from 'path';
 
 interface SwnMicroservicesProps {
   productTable: ITable;
+  basketTable: ITable;
 }
 
 export class SwnMicroservices extends Construct {
   public readonly productMicroservice: NodejsFunction;
+  public readonly basketMicroservice: NodejsFunction;
 
   constructor(scope: Construct, id: string, props: SwnMicroservicesProps) {
     super(scope, id);
 
+    // product microservices
+    this.productMicroservice = this.createProductMicroservice(
+      props.productTable,
+    );
+    // basket microservices
+    this.basketMicroservice = this.createBasketMicroservicee(props.basketTable);
+  }
+
+  private createProductMicroservice(productTable: ITable): NodejsFunction {
     const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
         externalModules: ['aws-cdk'],
       },
       environment: {
         PRIMARY_KEY: 'id',
-        DYNAMODB_TABLE_NAME: props.productTable.tableName,
+        DYNAMODB_TABLE_NAME: productTable.tableName,
       },
       runtime: Runtime.NODEJS_14_X,
     };
@@ -33,8 +44,30 @@ export class SwnMicroservices extends Construct {
       ...nodeJsFunctionProps,
     });
 
-    props.productTable.grantReadWriteData(productFunction);
+    productTable.grantReadWriteData(productFunction);
 
-    this.productMicroservice = productFunction;
+    return productFunction;
+  }
+
+  private createBasketMicroservicee(basketTable: ITable): NodejsFunction {
+    const nodeJsFunctionProps: NodejsFunctionProps = {
+      bundling: {
+        externalModules: ['aws-cdk'],
+      },
+      environment: {
+        PRIMARY_KEY: 'userName',
+        DYNAMODB_TABLE_NAME: basketTable.tableName,
+      },
+      runtime: Runtime.NODEJS_14_X,
+    };
+
+    const basketFunction = new NodejsFunction(this, 'basketLambdaFunction', {
+      entry: join(__dirname, `/../src/basket/index.js`),
+      ...nodeJsFunctionProps,
+    });
+
+    basketTable.grantReadWriteData(basketFunction);
+
+    return basketFunction;
   }
 }
