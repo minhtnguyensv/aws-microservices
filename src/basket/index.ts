@@ -4,6 +4,10 @@ import {
   PutItemCommand,
   DeleteItemCommand,
 } from '@aws-sdk/client-dynamodb';
+import {
+  PutEventsCommand,
+  PutEventsCommandInput,
+} from '@aws-sdk/client-eventbridge';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import {
   Context,
@@ -12,6 +16,7 @@ import {
   APIGatewayProxyEvent,
 } from 'aws-lambda';
 import { ddbClient } from './ddbClient';
+import { ebClient } from './eventBridgeClient';
 // import { v4 } from 'uuid';
 
 export const handler = async (
@@ -145,6 +150,75 @@ const deleteBaskset = async (userName?: string) => {
 };
 
 // POST basket/checkout
-const checkoutBaskset = (event: APIGatewayProxyEvent) => {
+const checkoutBaskset = async (event: any) => {
   // publish and event to eventbridge - this will subscribe by other microservice and start ordering process.
+
+  const checkoutRequest = JSON.parse(event.body);
+  if (checkoutRequest === null || !('userName' in checkoutRequest)) {
+    throw new Error(
+      `userName should exist in checkoutRequest: ${checkoutRequest}`,
+    );
+  }
+  // 1- get exsiting basket with items
+  const basket = await getBaskset(checkoutRequest.userName);
+  // 2- create an event json object with basket items, calculate totalprice, prepare order create json data to send ordering ms
+  const checkoutPayload = preppareOrderPayload(checkoutRequest, basket);
+  // 3- publish an event to eventbridge - this will subscribe by order microservice and start ordering process.
+  const publishedEvent = await publishCheckoutBasketEnvent(checkoutPayload);
+  // 4- remove existing basket
+
+  await deleteBaskset(checkoutRequest.userName);
+};
+const preppareOrderPayload = (checkoutRequest: any, basket: any) => {
+  console.log('preppareOrderPayload');
+  // prepare order payload -> calculate totalprice and combine checkoutRequest and basket items
+  // aggregate and enrich request and basket data in order to create order payload
+  try {
+    if (checkoutRequest === null || basket.items === null) {
+      throw new Error(`items should exist in basket: ${basket}`);
+    }
+
+    let totalPrice = 0;
+
+    basket.items.array.forEach(
+      (item: any) => (totalPrice = totalPrice + item.price),
+    );
+
+    checkoutRequest.totalPrice = totalPrice;
+    // copies all properties from basket into checkoutRequest
+    Object.assign(checkoutRequest, basket);
+
+    console.log(
+      `Success preppareOrderPayload, orderPayload: ${checkoutRequest}`,
+    );
+    return checkoutRequest;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const publishCheckoutBasketEnvent = async (checkoutPayload: any) => {
+  console.log('publishCheckoutBasketEvent with payload :', checkoutPayload);
+
+  try {
+    const params: PutEventsCommandInput = {
+      Entries: [
+        {
+          Source: process.env.EVENT_SOURCE,
+          Detail: JSON.stringify(checkoutPayload),
+          DetailType: process.env.EVENT_DETAILTYPE,
+          Resources: [],
+          EventBusName: process.env.EVENT_BUSNAME,
+        },
+      ],
+    };
+
+    const data = await ebClient.send(new PutEventsCommand(params));
+    console.log('Success, event sent; requestID:', data);
+    return data;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
 };
