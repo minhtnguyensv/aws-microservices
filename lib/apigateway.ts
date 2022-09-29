@@ -5,6 +5,7 @@ import { Construct } from 'constructs';
 interface SwnApiGateProps {
   productMicroservice: IFunction;
   basketMicroservice: IFunction;
+  orderMicroservice: IFunction;
 }
 
 export class SwnApiGate extends Construct {
@@ -15,6 +16,8 @@ export class SwnApiGate extends Construct {
     this.createProductApi(props.productMicroservice);
     // basket api
     this.createBasketApi(props.basketMicroservice);
+    // order api
+    this.createOrderApi(props.orderMicroservice);
   }
 
   private createProductApi = (productMicroservice: IFunction) => {
@@ -58,5 +61,23 @@ export class SwnApiGate extends Construct {
     basketCheckout.addMethod('POST'); // POST basket/checkout
 
     // expected reqeust payload ; { userName: swc }
+  };
+
+  private createOrderApi = (orderMicroservice: IFunction) => {
+    // product microservices api gateway
+    const apigw = new LambdaRestApi(this, 'orderApi', {
+      restApiName: 'Order Service',
+      handler: orderMicroservice,
+      proxy: false, // explicitly define the API model
+    });
+
+    // basket microservices api gateway
+    // root name = order
+
+    const basket = apigw.root.addResource('order');
+    basket.addMethod('GET'); // GET /order
+
+    const singleOrder = basket.addResource('{userName}'); // order/{userName}
+    singleOrder.addMethod('GET'); // GET /order/{userName}
   };
 }
