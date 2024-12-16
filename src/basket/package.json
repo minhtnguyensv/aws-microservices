@@ -9,8 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.351.0",
-    "@aws-sdk/client-eventbridge": "^3.350.0",
+    "@aws-sdk/client-dynamodb": "^3.713.0",
+    "@aws-sdk/client-eventbridge": "^3.713.0",
     "@aws-sdk/util-dynamodb": "^3.179.0"
   },
   "devDependencies": {
